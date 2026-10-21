@@ -7,7 +7,8 @@
 #include "usb_vcp.h"
 #include "usbd_cdc_if.h"
 #include "usbd_cdc.h"
-
+#include "stdarg.h"
+#include "stdio.h"
 
 #define RX_BUFFER_MAX_WRITE_INDEX (APP_RX_DATA_SIZE - CDC_DATA_FS_MAX_PACKET_SIZE)
 
@@ -36,6 +37,18 @@
 		GPIO_InitStruct.Pull = GPIO_PULLDOWN;
 		GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
 
+#ifdef STM32L422xx
+		GPIO_InitStruct.Pin = GPIO_PIN_12;
+		HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+#endif
+#ifdef STM32L433xx
+		GPIO_InitStruct.Pin = GPIO_PIN_12;
+		HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+#endif
+
+
 #ifdef STM32F103xB
 		GPIO_InitStruct.Pin = GPIO_PIN_12;
 		HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -56,11 +69,15 @@
  /// @brief
  ///  waits for the USB Enumeration  Event to happen
  /// this creates the USB buffers so fifo.data will change from 0 to the tx buffer address
-inline void usb_is_init(void)
+inline HAL_StatusTypeDef usb_is_init(void)
 {
+	int16_t timeoutusb = 500;
 
-   while (usb_tx_fifo.data == 0);
-
+   while (timeoutusb-- && (usb_tx_fifo.data == 0)){
+	   HAL_Delay(1);
+   }
+   if(timeoutusb <= 0) return HAL_TIMEOUT;
+   return HAL_OK;
 }
 //----------------------------------------------------------------------------------
 /// @brief Update the write index for the next incoming packet
@@ -177,6 +194,54 @@ int usb_vcp_recv (uint8_t* buf, uint16_t len)
 }
 //----------------------------------------------------------------------------------
 
+/**
+ * @brief writes c string type to usb send buffer no formatting
+ *
+ * @param c_string
+ * @return
+ */
+int usb_print(const  char* c_string)
+{
+	uint16_t size = 0;
+	uint8_t* ptr = (uint8_t* )c_string;
+	int status =-1;
+
+	while(*ptr){ //NULL Termination has to be used
+		ptr++;
+		size++;
+		if(size == 0xFFFF){  // prevent overflow also string probably not correctly terminated
+			size = 0;
+			break;
+		}
+	}
+	if(size){
+		ptr = (uint8_t* )c_string;
+		status = usb_vcp_send (ptr, size);
+	}
+	return status;
+}
+//----------------------------------------------------------------------------------
+
+/**
+ * @brief
+ *
+ * @param format
+ * @return
+ */
+int usb_printf(const char *format, ...) {
+
+	char buffer[128];
+	int  status = HAL_ERROR;
+    va_list args;
+    va_start(args, format);
+    status =  vsprintf (buffer,format, args);
+    va_end(args);
+    usb_print(buffer);
+    return status;
+}
+
+
+
 //----------------------------------------------------------------------------------
 /// @brief
 /// USB Service Routine this should be called regularly since this tests if Host is ready to receive new packets
@@ -210,3 +275,6 @@ void usb_vcp_service ()
     }
   }
 }
+
+
+

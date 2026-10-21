@@ -43,7 +43,13 @@
 #ifndef INC_USB_VCP_H_
 #define INC_USB_VCP_H_
 
+
+#ifdef __cplusplus
+extern "C"{
+#endif
+
 #include "stdint.h"
+#include "stm32l4xx_hal.h"
 
  typedef struct VCP_FIFO_TYPE
   {
@@ -62,12 +68,18 @@
 
 
   void usb_pre_init(void);
-  void usb_is_init(void);
+  HAL_StatusTypeDef usb_is_init(void);
   uint8_t* usb_update_rx(uint32_t *Len);
   void usb_vcp_init (uint8_t* UserTxBufferFS, uint8_t* UserRxBufferFS);
   int usb_vcp_send (uint8_t* buf, uint16_t len);
   int usb_vcp_recv (uint8_t* buf, uint16_t len);
+  int usb_print(const  char* c_string);
+  int usb_printf(const char *format, ...) ;
   void usb_vcp_service ();
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_USB_VCP_H_ */

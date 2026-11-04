@@ -8,7 +8,7 @@
 #include "usbd_cdc_if.h"
 #include "usbd_cdc.h"
 #include "stdarg.h"
-#include "stdio.h"
+#include "shared_inc/msg_sprintf.h"
 
 #define RX_BUFFER_MAX_WRITE_INDEX (APP_RX_DATA_SIZE - CDC_DATA_FS_MAX_PACKET_SIZE)
 
@@ -234,7 +234,7 @@ int usb_printf(const char *format, ...) {
 	int  status = HAL_ERROR;
     va_list args;
     va_start(args, format);
-    status =  vsprintf (buffer,format, args);
+    status =  msg_vsnprintf (buffer,sizeof(buffer),format, args);
     va_end(args);
     usb_print(buffer);
     return status;
